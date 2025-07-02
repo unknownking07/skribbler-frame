@@ -1,9 +1,10 @@
 // app/frames/frames.ts
 import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
+import type { ReactElement } from "react";
 
 export const frames = createFrames({
-  basePath: "/frames",       // important ‑ matches your route folder
+  basePath: "/frames", // important ‑ matches your route folder
 });
 
 export const handleRequest = frames(async (ctx) => {
@@ -17,14 +18,24 @@ export const handleRequest = frames(async (ctx) => {
   const { drawing, answer, choices } = game;
   const parsedChoices: string[] = JSON.parse(choices);
 
-  // Was this a guess?
-  const guess = ctx.message?.buttonIndex;        // 0‑based index or undefined
-  const guessedCorrectly = guess !== undefined && parsedChoices[guess] === answer;
+  const guess = ctx.message?.buttonIndex;
+  const guessedCorrectly =
+    guess !== undefined && parsedChoices[guess] === answer;
+
+  const buttons = guessedCorrectly
+    ? [
+        <Button action="link" target="https://warpcast.com/frames">
+          ✅ Correct!
+        </Button>,
+      ] as [ReactElement]
+    : (parsedChoices.map((c, i) => (
+        <Button action="post" value={String(i)}>
+          {c}
+        </Button>
+      )) as [ReactElement, ReactElement, ReactElement]);
 
   return {
-    image: <img src={drawing} width="512" height="512" />,
-    buttons: guessedCorrectly
-      ? [<Button action="link" target="https://warpcast.com/frames">✅ Correct!</Button>]
-      : parsedChoices.map((c) => <Button action="post">{c}</Button>),
+    image: drawing, // image as a string (valid URL)
+    buttons,
   };
 });
