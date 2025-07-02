@@ -1,10 +1,10 @@
-// app/frames/frames.tsx              ← keep the .tsx extension
+// app/frames/frames.tsx   ← keep the .tsx extension
 import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
 import type { ReactElement } from "react";
 
 export const frames = createFrames({
-  basePath: "/frames",          // matches route folder
+  basePath: "/frames",
 });
 
 export const handleRequest = frames(async (ctx) => {
@@ -18,31 +18,26 @@ export const handleRequest = frames(async (ctx) => {
   const { drawing, answer, choices } = game;
   const parsedChoices: string[] = JSON.parse(choices).slice(0, 3); // max 3
 
-  // ── Was this a guess? ──────────────────────────────────────────
   const guess = ctx.message?.buttonIndex;
   const guessedCorrectly =
     guess !== undefined && parsedChoices[guess] === answer;
 
-  // ── Build buttons as a *tuple* so TS is happy ─────────────────
   const buttons = guessedCorrectly
     ? ([
         <Button action="link" target="https://warpcast.com/frames">
           ✅ Correct!
         </Button>,
-      ] as const)                                            // tuple (len 1)
-    : (parsedChoices.map((c, i) => (
-        <Button action="post" value={String(i)}>
-          {c}
-        </Button>
+      ] as const)                                // tuple length 1
+    : (parsedChoices.map((c) => (
+        <Button action="post">{c}</Button>       // ← removed value prop
       )) as [
-        ReactElement,       // tuple (len 3) – adjust if you want 4 options
+        ReactElement,                            // tuple length 3
         ReactElement,
         ReactElement
       ]);
 
-  // ── Return via ctx.render so typing matches FrameHandlerFunction ──
   return ctx.render({
-    image: drawing,   // string (data‑URL)
+    image: drawing, // string (data‑URL)
     buttons,
   });
 });
