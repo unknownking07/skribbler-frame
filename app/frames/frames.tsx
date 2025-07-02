@@ -1,4 +1,3 @@
-import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
 import type { ReactElement } from "react";
 
@@ -10,12 +9,12 @@ export const frames = createFrames({ basePath: "/frames" });
  * This ensures TypeScript can infer the correct tuple type for buttons.
  */
 function makeButtons<T extends ReactElement[]>(...btns: T): T {
-  return btns;
+return btns;
 }
 
 export const handleRequest = frames(async (ctx) => {
-  const { searchParams } = new URL(ctx.request.url);
-  const gameId = searchParams.get("gameId");
+const { searchParams } = new URL(ctx.request.url);
+const gameId = searchParams.get("gameId");
   if (!gameId) {
     return ctx.render({
       image: "", // Provide a fallback
@@ -27,7 +26,7 @@ export const handleRequest = frames(async (ctx) => {
     });
   }
 
-  const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
+const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
   if (!game || Object.keys(game).length === 0) {
     return ctx.render({
       image: "", // Provide a fallback
@@ -39,14 +38,14 @@ export const handleRequest = frames(async (ctx) => {
     });
   }
 
-  const { drawing, answer, choices } = game;
+const { drawing, answer, choices } = game;
 
-  let parsedChoices: string[];
-  try {
+let parsedChoices: string[];
+try {
     parsedChoices = Array.isArray(choices)
       ? choices.slice(0, 3)
       : JSON.parse(choices).slice(0, 3);
-  } catch {
+} catch {
     return ctx.render({
       image: "", // Provide a fallback
       buttons: makeButtons(
@@ -55,34 +54,29 @@ export const handleRequest = frames(async (ctx) => {
         </Button>
       ),
     });
-  }
+}
 
   const guess = ctx.message?.buttonIndex; // already 0-based
-  const guessedCorrectly =
+const guessedCorrectly =
     guess !== undefined &&
     typeof guess === "number" &&
     parsedChoices[guess] === answer;
 
-  const buttons = guessedCorrectly
-    ? makeButtons(
+const buttons = guessedCorrectly
+? makeButtons(
         <Button
           action="link"
           target="https://warpcast.com/frames"
           key="correct"
         >
-          ✅ Correct!
-        </Button>
-      )
-    : makeButtons(
-        ...parsedChoices.map((choice, idx) => (
-          <Button action="post" key={choice}>
-            {choice}
-          </Button>
-        ))
-      );
+✅ Correct!
+</Button>
+)
+@@ -45,7 +82,7 @@ export const handleRequest = frames(async (ctx) => {
+);
 
-  return ctx.render({
+return ctx.render({
     image: drawing || "", // Fallback in case drawing is missing
-    buttons,
-  });
+buttons,
+});
 });
