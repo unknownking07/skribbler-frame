@@ -1,4 +1,3 @@
-// app/frames/frames.tsx
 import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
 import type { ReactElement } from "react";
@@ -6,7 +5,7 @@ import type { ReactElement } from "react";
 export const frames = createFrames({ basePath: "/frames" });
 
 /* Helper to satisfy frames.js tuple typing */
-function makeButtons<T extends [...ReactElement[]]>(...btns: T): T {
+function makeButtons<T extends ReactElement[]>(...btns: T): T {
   return btns;
 }
 
@@ -33,12 +32,16 @@ export const handleRequest = frames(async (ctx) => {
 
   const buttons = guessedCorrectly
     ? makeButtons(
-        <Button action="link" target="https://warpcast.com/frames">
+        <Button action="link" target="https://warpcast.com/frames" key="correct">
           ✅ Correct!
         </Button>
       )
     : makeButtons(
-        ...parsedChoices.map((c) => <Button action="post">{c}</Button>)
+        ...parsedChoices.map((choice, idx) => (
+          <Button action="post" key={choice}>
+            {choice}
+          </Button>
+        ))
       );
 
   return ctx.render({
