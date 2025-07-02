@@ -11,8 +11,8 @@ function makeButtons<T extends ReactElement[]>(...btns: T): T {
 }
 
 export const handleRequest = frames(async (ctx) => {
-const { searchParams } = new URL(ctx.request.url);
-const gameId = searchParams.get("gameId");
+  const { searchParams } = new URL(ctx.request.url);
+  const gameId = searchParams.get("gameId");
   if (!gameId) {
     return ctx.render({
       image: "", // Provide a fallback
@@ -24,7 +24,7 @@ const gameId = searchParams.get("gameId");
     });
   }
 
-const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
+  const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
   if (!game || Object.keys(game).length === 0) {
     return ctx.render({
       image: "", // Provide a fallback
@@ -36,17 +36,25 @@ const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
     });
   }
 
-const { drawing, answer, choices } = game;
+  const { drawing, answer, choices } = game;
 
   let parsedChoices: string[];
   try {
-    parsedChoices = JSON.parse(choices).slice(0, 3); // show up to 3 buttons
+    const arr = JSON.parse(choices);
+    parsedChoices = Array.isArray(arr) ? arr.slice(0, 3) : [];
   } catch {
-    throw new Error("Invalid choices data");
+    return ctx.render({
+      image: "",
+      buttons: makeButtons(
+        <Button action="post" key="invalid-choices">
+          Invalid choices data
+        </Button>
+      ),
+    });
   }
 
   const guess = ctx.message?.buttonIndex; // already 0-based
-const guessedCorrectly =
+  const guessedCorrectly =
     guess !== undefined &&
     typeof guess === "number" &&
     parsedChoices[guess] === answer;
@@ -58,7 +66,7 @@ const guessedCorrectly =
         </Button>
       )
     : makeButtons(
-        ...parsedChoices.map((choice, idx) => (
+        ...parsedChoices.map((choice) => (
           <Button action="post" key={choice}>
             {choice}
           </Button>
@@ -66,7 +74,4 @@ const guessedCorrectly =
       );
 
   return ctx.render({
-    image: drawing, // data-URL or http(s) URL
-    buttons,
-  });
-});
+    image: drawing || "", // data-URL or http(s) URL, fallback to empty string
