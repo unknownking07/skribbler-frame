@@ -1,35 +1,30 @@
 // app/frames/frames.ts
+import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
-import { Button, Frame, TextInput } from "frames.js/next";
-import { getFrameMessage } from "frames.js";
 
-export async function POST(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const gameId = url.searchParams.get("gameId");
-  const message = await getFrameMessage(req);
+export const frames = createFrames({
+  basePath: "/frames",       // important ‑ matches your route folder
+});
 
-  if (!message || !gameId) {
-    return new Response("Invalid request", { status: 400 });
-  }
+export const handleRequest = frames(async (ctx) => {
+  const { searchParams } = new URL(ctx.request.url);
+  const gameId = searchParams.get("gameId");
+  if (!gameId) throw new Error("Missing gameId");
 
-  const game = await redis.get(gameId);
-  if (!game) {
-    return new Response("Game not found", { status: 404 });
-  }
+  const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
+  if (!game) throw new Error("Game not found");
 
-  const { drawing, choices, correctAnswerIndex } = game as any;
-  const userGuess = message.input;
+  const { drawing, answer, choices } = game;
+  const parsedChoices: string[] = JSON.parse(choices);
 
-  const guessedCorrectly = userGuess?.toLowerCase() === choices[correctAnswerIndex].toLowerCase();
+  // Was this a guess?
+  const guess = ctx.message?.buttonIndex;        // 0‑based index or undefined
+  const guessedCorrectly = guess !== undefined && parsedChoices[guess] === answer;
 
-  return new Frame({
-    image: drawing,
-    imageAspectRatio: "square",
-    input: guessedCorrectly ? undefined : TextInput({ placeholder: "Your guess..." }),
-    buttons: [
-      guessedCorrectly
-        ? Button.Link({ label: "✅ Correct!", url: "https://warpcast.com/frames" })
-        : Button.Submit({ label: "Guess" }),
-    ],
-  }).toResponse();
-}
+  return {
+    image: <img src={drawing} width="512" height="512" />,
+    buttons: guessedCorrectly
+      ? [<Button action="link" target="https://warpcast.com/frames">✅ Correct!</Button>]
+      : parsedChoices.map((c) => <Button action="post">{c}</Button>),
+  };
+});

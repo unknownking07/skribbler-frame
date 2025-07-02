@@ -1,8 +1,7 @@
 // app/frames/route.tsx
-import { frames } from "frames.js/next";
-import { POST } from "./frames";
+import { handleRequest } from "./frames";
 
 export const runtime = "edge";
 
-export const GET = frames();
-export { POST };
+export const GET = handleRequest;
+export const POST = handleRequest;
