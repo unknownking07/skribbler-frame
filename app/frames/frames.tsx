@@ -36,18 +36,14 @@ export const handleRequest = frames(async (ctx) => {
     guess !== undefined && parsedChoices[guess] === answer;
   
   const buttons = guessedCorrectly
-    ? ([
+    ? [
         <Button action="link" target="https://warpcast.com/frames">
           ✅ Correct!
         </Button>,
-      ] as const)
-    : (parsedChoices.map((c) => (
+      ]
+    : parsedChoices.map((c) => (
         <Button action="post">{c}</Button>
-      )) as [
-        ReactElement,
-        ReactElement,
-        ReactElement
-      ]); // tuple length = 3
+      ));
   
   return {
     image: drawing, // string (data‑URL)
