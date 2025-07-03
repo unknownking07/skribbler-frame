@@ -94,5 +94,4 @@ export const handleRequest = frames(async (ctx) => {
   });
 });
 
-/* ---- EXPLICIT export for route.tsx ---- */
-export { handleRequest };
+
