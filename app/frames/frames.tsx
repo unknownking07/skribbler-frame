@@ -19,14 +19,14 @@ export const handleRequest = frames(async (ctx) => {
 
   if (!gameId) {
     // No gameId provided in URL
-    return ctx.render({
+    return {
       image: "", // Optionally: Provide a fallback image URL here
       buttons: makeButtons(
         <Button action="post" key="missing-gameId">
           Missing gameId
         </Button>
       ),
-    });
+    };
   }
 
   // Fetch game data from Redis
@@ -34,14 +34,14 @@ export const handleRequest = frames(async (ctx) => {
 
   if (!game || Object.keys(game).length === 0) {
     // No such game found in Redis
-    return ctx.render({
+    return {
       image: "",
       buttons: makeButtons(
         <Button action="post" key="not-found">
           Game not found
         </Button>
       ),
-    });
+    };
   }
 
   const { drawing = "", answer = "", choices = "" } = game;
@@ -53,14 +53,14 @@ export const handleRequest = frames(async (ctx) => {
     parsedChoices = Array.isArray(arr) ? arr.slice(0, 3) : [];
   } catch {
     // Choices could not be parsed as JSON
-    return ctx.render({
+    return {
       image: "",
       buttons: makeButtons(
         <Button action="post" key="invalid-choices">
           Invalid choices data
         </Button>
       ),
-    });
+    };
   }
 
   // Determine if the user's guess is present and correct
@@ -85,8 +85,8 @@ export const handleRequest = frames(async (ctx) => {
         ))
       );
 
-  return ctx.render({
+  return {
     image: drawing || "", // data-URL or http(s) URL, fallback to empty string
     buttons,
-  });
+  };
 });
