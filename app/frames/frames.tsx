@@ -1,79 +1,98 @@
-// app/frames/frames.tsx
+// app/frames/frames.tsx  (NO default export)
 import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
 import type { ReactElement } from "react";
 
 export const frames = createFrames({ basePath: "/frames" });
 
+/* helper: returns a tuple of 1‑4 buttons, satisfying frames.js types */
 function makeButtons(...btns: [ReactElement]): [ReactElement];
-function makeButtons(...btns: [ReactElement, ReactElement]): [ReactElement, ReactElement];
-function makeButtons(...btns: [ReactElement, ReactElement, ReactElement]): [ReactElement, ReactElement, ReactElement];
-function makeButtons(...btns: [ReactElement, ReactElement, ReactElement, ReactElement]): [ReactElement, ReactElement, ReactElement, ReactElement];
+function makeButtons(...btns: [ReactElement, ReactElement]): [
+  ReactElement,
+  ReactElement
+];
+function makeButtons(...btns: [ReactElement, ReactElement, ReactElement]): [
+  ReactElement,
+  ReactElement,
+  ReactElement
+];
+function makeButtons(
+  ...btns: [ReactElement, ReactElement, ReactElement, ReactElement]
+): [ReactElement, ReactElement, ReactElement, ReactElement];
 function makeButtons(...btns: ReactElement[]) {
   return btns as any;
 }
 
-// The handler below is rewritten to return a React element directly
-export default async function FramesPage({ searchParams }: { searchParams: { [key: string]: string } }) {
-  const gameId = searchParams.gameId;
+/* ------------------------------------------------------------------ */
+/*  Frame handler ‑ MUST be exported so route.tsx can import it       */
+/* ------------------------------------------------------------------ */
+export const handleRequest = frames(async (ctx) => {
+  const { searchParams } = new URL(ctx.request.url);
+  const gameId = searchParams.get("gameId");
 
-  // 3a. Fast-fail if no gameId
+  /* 1. Fast‑fail if no gameId */
   if (!gameId) {
-    return (
-      <div>
-        <img src="" alt="No game" />
-        <div>
-          <Button action="post">Missing gameId</Button>
-        </div>
-      </div>
-    );
+    return ctx.render({
+      image: "",
+      buttons: makeButtons(
+        <Button action="post">Missing gameId</Button>
+      ),
+    });
   }
 
-  // 3b. Fetch game from Redis
+  /* 2. Fetch game */
   const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
   if (!game || Object.keys(game).length === 0) {
-    return (
-      <div>
-        <img src="" alt="Not found" />
-        <div>
-          <Button action="post">Game not found</Button>
-        </div>
-      </div>
-    );
+    return ctx.render({
+      image: "",
+      buttons: makeButtons(
+        <Button action="post">Game not found</Button>
+      ),
+    });
   }
 
   const { drawing = "", answer = "", choices = "[]" } = game;
 
-  // 3c. Parse choices safely
+  /* 3. Parse choices */
   let parsedChoices: string[];
   try {
     const arr = JSON.parse(choices);
     parsedChoices = Array.isArray(arr) ? arr.slice(0, 3) : [];
   } catch {
-    return (
-      <div>
-        <img src="" alt="Invalid choices" />
-        <div>
-          <Button action="post">Invalid choices data</Button>
-        </div>
-      </div>
-    );
+    return ctx.render({
+      image: "",
+      buttons: makeButtons(
+        <Button action="post">Invalid choices data</Button>
+      ),
+    });
   }
 
-  // 3d. Guess logic is omitted here - you likely want to move it to a POST API handler or similar
+  /* 4. Guess result */
+  const guess = ctx.message?.buttonIndex; // 0‑based already
+  const guessedCorrectly =
+    guess !== undefined && parsedChoices[guess] === answer;
 
-  // 3e. Build buttons (tuple)
-  const buttons = parsedChoices.map((choice) => (
-    <Button action="post" key={choice}>
-      {choice}
-    </Button>
-  ));
+  /* 5. Build buttons */
+  const buttons = guessedCorrectly
+    ? makeButtons(
+        <Button action="link" target="https://warpcast.com/frames">
+          ✅ Correct!
+        </Button>
+      )
+    : makeButtons(
+        ...parsedChoices.map((c) => (
+          <Button action="post" key={c}>
+            {c}
+          </Button>
+        ))
+      );
 
-  // 3f. Render frame
-  return (
-    <div>
-      <img src={drawing} alt="Drawing" />
-      <div>{buttons}</div>
-    </div>
-  );
-}
+  /* 6. Render frame */
+  return ctx.render({
+    image: drawing,
+    buttons,
+  });
+});
+
+/* ---- EXPLICIT export for route.tsx ---- */
+export { handleRequest };
