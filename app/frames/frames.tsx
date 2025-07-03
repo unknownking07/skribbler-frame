@@ -1,11 +1,11 @@
-// app/frames/frames.tsx  (NO default export)
+// app/frames/frames.tsx
 import { createFrames, Button } from "frames.js/next";
 import { redis } from "@/lib/db";
 import type { ReactElement } from "react";
 
 export const frames = createFrames({ basePath: "/frames" });
 
-/* helper: returns a tuple of 1‑4 buttons, satisfying frames.js types */
+/* helper: returns a tuple of 1‑4 buttons */
 function makeButtons(...btns: [ReactElement]): [ReactElement];
 function makeButtons(...btns: [ReactElement, ReactElement]): [
   ReactElement,
@@ -23,32 +23,26 @@ function makeButtons(...btns: ReactElement[]) {
   return btns as any;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Frame handler ‑ MUST be exported so route.tsx can import it       */
-/* ------------------------------------------------------------------ */
+/* frame handler */
 export const handleRequest = frames(async (ctx) => {
   const { searchParams } = new URL(ctx.request.url);
   const gameId = searchParams.get("gameId");
 
   /* 1. Fast‑fail if no gameId */
   if (!gameId) {
-    return ctx.render({
+    return {
       image: "",
-      buttons: makeButtons(
-        <Button action="post">Missing gameId</Button>
-      ),
-    });
+      buttons: makeButtons(<Button action="post">Missing gameId</Button>),
+    };
   }
 
-  /* 2. Fetch game */
+  /* 2. Load game */
   const game = await redis.hgetall<Record<string, string>>(`game:${gameId}`);
   if (!game || Object.keys(game).length === 0) {
-    return ctx.render({
+    return {
       image: "",
-      buttons: makeButtons(
-        <Button action="post">Game not found</Button>
-      ),
-    });
+      buttons: makeButtons(<Button action="post">Game not found</Button>),
+    };
   }
 
   const { drawing = "", answer = "", choices = "[]" } = game;
@@ -59,20 +53,20 @@ export const handleRequest = frames(async (ctx) => {
     const arr = JSON.parse(choices);
     parsedChoices = Array.isArray(arr) ? arr.slice(0, 3) : [];
   } catch {
-    return ctx.render({
+    return {
       image: "",
       buttons: makeButtons(
         <Button action="post">Invalid choices data</Button>
       ),
-    });
+    };
   }
 
   /* 4. Guess result */
-  const guess = ctx.message?.buttonIndex; // 0‑based already
+  const guess = ctx.message?.buttonIndex;
   const guessedCorrectly =
     guess !== undefined && parsedChoices[guess] === answer;
 
-  /* 5. Build buttons */
+  /* 5. Buttons */
   const buttons = guessedCorrectly
     ? makeButtons(
         <Button action="link" target="https://warpcast.com/frames">
@@ -87,11 +81,12 @@ export const handleRequest = frames(async (ctx) => {
         ))
       );
 
-  /* 6. Render frame */
-  return ctx.render({
+  /* 6. Return the FrameDefinition object */
+  return {
     image: drawing,
     buttons,
-  });
+  };
 });
 
-
+/* explicit export for route.tsx */
+export { handleRequest };
